@@ -2,7 +2,6 @@ package sweep
 
 import (
 	"fmt"
-	"log"
 	"math/rand"
 	"net"
 	"os"
@@ -17,11 +16,8 @@ import (
 var seqNum uint32
 
 type reply struct {
-	Host      net.IP `json:"ip"`
-	Hostname  string `json:"hostname,omitempty"`
-	Alive     bool   `json:"is_alive"`
-	OpenPorts []int  `json:"open_ports,omitempty"`
-	SysType   string `json:"systype,omitempty"`
+	Host net.IP
+	Did  bool
 }
 
 const pingWorkers = 100
@@ -33,6 +29,8 @@ func PingSweep(subnetFlag string) {
 		os.Exit(1)
 	}
 	nHosts := len(ips)
+	fmt.Println("First IP addr: " + ips[0].String())
+	fmt.Println("Last IP addr: " + ips[len(ips)-1].String())
 
 	hosts := make(chan net.IP)
 	res := make(chan reply)
@@ -48,11 +46,13 @@ func PingSweep(subnetFlag string) {
 		}
 	}
 
+	timeStart := time.Now()
 	// populate chan with ip addresses that will workers consume
 	go func() {
 		for _, ip := range ips {
 			hosts <- ip
 		}
+
 		close(hosts)
 	}()
 
@@ -60,29 +60,31 @@ func PingSweep(subnetFlag string) {
 
 	for i := 0; i < nHosts; i++ {
 		rep := <-res
-		if rep.Alive {
+		if rep.Did {
 			fmt.Printf("%sEcho reply from %s\n%s", helpers.Green, rep.Host, helpers.Reset)
 		} else {
 			noRep++
 		}
 	}
+	fmt.Println("No reply from " + fmt.Sprint(noRep) + " hosts")
+	fmt.Printf("Execution time: %.2f seconds\n", time.Since(timeStart).Seconds())
 	close(res)
-
+}
 
 func worker(hosts chan net.IP, res chan reply) {
 	for host := range hosts {
-		Alive, err := PingIP(&host)
+		did, err := PingIP(&host)
 		if err != nil {
 			fmt.Println(err)
 			res <- reply{
-				Host:  host,
-				Alive: false,
+				Host: host,
+				Did:  false,
 			}
 			continue
 		}
 		res <- reply{
-			Host:  host,
-			Alive: Alive,
+			Host: host,
+			Did:  did,
 		}
 	}
 }
@@ -143,26 +145,4 @@ func PingIP(dstIp *net.IP) (bool, error) {
 			}
 		}
 	}
-}
-
-func main() {
-	// Requires root/admin privileges
-	if os.Getuid() != 0 {
-		log.Fatal("This program requires root/administrator privileges to run")
-	}
-
-	scanner := NewNetworkScanner("192.168.50", 24)
-
-	fmt.Println("Scanning network... This may take a few moments.")
-
-	discoveredHosts := scanner.DiscoverHosts()
-
-	outputFile := "network_discovery.json"
-
-	err := SaveHostsToJSON(discoveredHosts, outputFile)
-	if err != nil {
-		log.Fatalf("Failed to save discovery results: %v", err)
-	}
-
-	fmt.Printf("Network scan complete. %d hosts discovered. Results saved to %s\n", len(discoveredHosts), outputFile)
 }

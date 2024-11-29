@@ -1,0 +1,19 @@
+[
+  {
+    "ip": "192.168.50.183",
+    "hostname": "megara",
+    "is_alive": true,
+    "open_ports": [
+      22
+    ]
+  },
+  {
+    "ip": "192.168.50.1",
+    "hostname": "RT-AX58U-B070",
+    "is_alive": true,
+    "open_ports": [
+      80,
+      53
+    ]
+  }
+]
