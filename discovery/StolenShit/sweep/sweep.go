@@ -22,6 +22,15 @@ type reply struct {
 
 const pingWorkers = 100
 
+// Likely need to modify this function to return an array of IPs that responded.
+// Then, within main, pass this array of IPs to port-scanning function for service discovery.
+// Serialze data to be output into a JSON format as in disc1.go
+// Find Hostname?
+// OS Fingerprint?
+// Alternatively, move these functionalities into the Claude program to serve as methods of the NetworkScanner struct. Probably this?
+// I like the idea of spinning up a number of workers and distributing the load across those workers. Also need to examin the channels
+// implemented here and implement them within the NetworkScanner methods to achieve concurrency.
+
 func PingSweep(subnetFlag string) {
 	ips, err := helpers.GetHosts(subnetFlag)
 	if err != nil {
@@ -29,8 +38,8 @@ func PingSweep(subnetFlag string) {
 		os.Exit(1)
 	}
 	nHosts := len(ips)
-	fmt.Println("First IP addr: " + ips[0].String())
-	fmt.Println("Last IP addr: " + ips[len(ips)-1].String())
+	//fmt.Println("First IP addr: " + ips[0].String())
+	//fmt.Println("Last IP addr: " + ips[len(ips)-1].String())
 
 	hosts := make(chan net.IP)
 	res := make(chan reply)
@@ -46,8 +55,8 @@ func PingSweep(subnetFlag string) {
 		}
 	}
 
-	timeStart := time.Now()
-	// populate chan with ip addresses that will workers consume
+	//timeStart := time.Now()
+	// populate chan with ip addresses that workes will consume
 	go func() {
 		for _, ip := range ips {
 			hosts <- ip
@@ -66,8 +75,8 @@ func PingSweep(subnetFlag string) {
 			noRep++
 		}
 	}
-	fmt.Println("No reply from " + fmt.Sprint(noRep) + " hosts")
-	fmt.Printf("Execution time: %.2f seconds\n", time.Since(timeStart).Seconds())
+	//fmt.Println("No reply from " + fmt.Sprint(noRep) + " hosts")
+	//fmt.Printf("Execution time: %.2f seconds\n", time.Since(timeStart).Seconds())
 	close(res)
 }
 
