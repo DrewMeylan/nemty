@@ -1,148 +1,210 @@
-package sweep
+package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
-	"math/rand"
 	"net"
 	"os"
-	"sync/atomic"
+	"sync"
 	"time"
 
-	"github.com/google/gopacket"
-	"github.com/google/gopacket/layers"
-	"github.com/murrrda/goSweep/pkg/helpers"
+	"golang.org/x/net/icmp"
+	"golang.org/x/net/ipv4"
 )
 
-var seqNum uint32
-
-type reply struct {
-	Host      net.IP `json:"ip"`
+// HostInfo stores comprehensive host discovery information
+type HostInfo struct {
+	IP        string `json:"ip"`
 	Hostname  string `json:"hostname,omitempty"`
-	Alive     bool   `json:"is_alive"`
+	IsAlive   bool   `json:"is_alive"`
 	OpenPorts []int  `json:"open_ports,omitempty"`
-	SysType   string `json:"systype,omitempty"`
+	SysType   string `json:"OS,omitempty"`
 }
 
-const pingWorkers = 100
+// NetScanner manages network discovery operations
+type NetScanner struct {
+	BaseIP     string
+	SubnetMask int
+	Timeout    time.Duration
+}
 
-func PingSweep(subnetFlag string) {
-	ips, err := helpers.GetHosts(subnetFlag)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-	nHosts := len(ips)
-
-	hosts := make(chan net.IP)
-	res := make(chan reply)
-
-	// spawn workers
-	if nHosts > pingWorkers {
-		for i := 0; i < pingWorkers; i++ {
-			go worker(hosts, res)
-		}
-	} else {
-		for i := 0; i < nHosts; i++ {
-			go worker(hosts, res)
-		}
-	}
-
-	// populate chan with ip addresses that will workers consume
-	go func() {
-		for _, ip := range ips {
-			hosts <- ip
-		}
-		close(hosts)
-	}()
-
-	noRep := 0
-
-	for i := 0; i < nHosts; i++ {
-		rep := <-res
-		if rep.Alive {
-			fmt.Printf("%sEcho reply from %s\n%s", helpers.Green, rep.Host, helpers.Reset)
-		} else {
-			noRep++
-		}
-	}
-	close(res)
-
-
-func worker(hosts chan net.IP, res chan reply) {
-	for host := range hosts {
-		Alive, err := PingIP(&host)
-		if err != nil {
-			fmt.Println(err)
-			res <- reply{
-				Host:  host,
-				Alive: false,
-			}
-			continue
-		}
-		res <- reply{
-			Host:  host,
-			Alive: Alive,
-		}
+// NewNetScanner creates a new network scanner
+func NewNetScanner(baseIP string, subnetMask int) *NetScanner {
+	return &NetScanner{
+		BaseIP:     baseIP,
+		SubnetMask: subnetMask,
+		Timeout:    1 * time.Second,
 	}
 }
 
-func PingIP(dstIp *net.IP) (bool, error) {
-	id := uint16(rand.Intn(65535))
-	seq := uint16(atomic.AddUint32(&seqNum, 1) % 65536)
-	icmp := &layers.ICMPv4{
-		TypeCode: layers.CreateICMPv4TypeCode(8, 0),
-		Id:       id,
-		Seq:      seq,
-	}
-
-	buf := gopacket.NewSerializeBuffer()
-	opts := gopacket.SerializeOptions{
-		FixLengths:       true,
-		ComputeChecksums: true,
-	}
-	if err := gopacket.SerializeLayers(buf, opts, icmp); err != nil {
-		fmt.Println("Couldn't serialize layer")
-		return false, fmt.Errorf("couldn't serialize layer: %w", err)
-	}
-
-	// Listen for ICMP packets
-	conn, err := net.ListenPacket("ip4:icmp", "0.0.0.0")
+// isHostAvailable checks host availability via ICMP ping --- Replace with goSweep function?
+func (ns *NetScanner) isHostAvailable(ip string) bool {
+	conn, err := icmp.ListenPacket("ip4:icmp", "0.0.0.0")
 	if err != nil {
-		fmt.Println("Couldn't listen")
-		return false, fmt.Errorf("couldn't listen: %w", err)
+		return false
 	}
 	defer conn.Close()
 
-	// Send ICMP echo request
-	if _, err := conn.WriteTo(buf.Bytes(), &net.IPAddr{IP: *dstIp}); err != nil {
-		fmt.Println("Write error")
-		return false, fmt.Errorf("write error: %w", err)
+	msg := icmp.Message{
+		Type: ipv4.ICMPTypeEcho,
+		Code: 0,
+		Body: &icmp.Echo{
+			ID:   os.Getpid() & 0xffff,
+			Seq:  1,
+			Data: []byte("PING"),
+		},
 	}
 
-	// Set read timeout
-	if err := conn.SetDeadline(time.Now().Add(3 * time.Second)); err != nil {
-		fmt.Println("Set deadline error")
-		return false, fmt.Errorf("set deadline error: %w", err)
+	wb, err := msg.Marshal(nil)
+	if err != nil {
+		return false
 	}
-	// next step is to get host response (if it responds)
-	for {
-		b := make([]byte, 2048)
 
-		if n, _, err := conn.ReadFrom(b); err != nil {
-			// timeout (no response from host)
-			return false, nil
-		} else {
-			packet := gopacket.NewPacket(b[:n], layers.LayerTypeICMPv4, gopacket.Default)
-			if icmpLayer := packet.Layer(layers.LayerTypeICMPv4); icmpLayer != nil {
-				icmpResponse := icmpLayer.(*layers.ICMPv4)
-				if icmpResponse.Id == id && icmpResponse.Seq == seq {
-					// Received expected ICMP response
-					return true, nil
-				}
+	_, err = conn.WriteTo(wb, &net.IPAddr{IP: net.ParseIP(ip)})
+	if err != nil {
+		return false
+	}
+
+	rb := make([]byte, 1500)
+	err = conn.SetReadDeadline(time.Now().Add(ns.Timeout))
+	if err != nil {
+		return false
+	}
+
+	n, _, err := conn.ReadFrom(rb)
+	if err != nil {
+		return false
+	}
+
+	rm, err := icmp.ParseMessage(ipv4.ICMPTypeEchoReply.Protocol(), rb[:n])
+	return err == nil && rm.Type == ipv4.ICMPTypeEchoReply
+}
+
+// comprehensivePortScan checks a wider range of ports
+func (ns *NetScanner) comprehensivePortScan(ip string) []int {
+	ports := []int{
+		// Common service ports
+		22,   // SSH
+		80,   // HTTP
+		443,  // HTTPS
+		21,   // FTP
+		25,   // SMTP
+		53,   // DNS
+		88,   // Kerberos
+		110,  // POP3
+		143,  // IMAP
+		389,  // LDAP
+		3306, // MySQL
+		3389, // RDP
+		5900, // VNC
+		8080, // HTTP Proxy
+		445,  // SMB
+	}
+
+	var openPorts []int
+	var wg sync.WaitGroup
+	portChan := make(chan int, len(ports))
+
+	for _, port := range ports {
+		wg.Add(1)
+		go func(p int) {
+			defer wg.Done()
+			address := fmt.Sprintf("%s:%d", ip, p)
+			conn, err := net.DialTimeout("tcp", address, ns.Timeout)
+			if err == nil {
+				portChan <- p
+				conn.Close()
 			}
-		}
+		}(port)
 	}
+
+	go func() {
+		wg.Wait()
+		close(portChan)
+	}()
+
+	for port := range portChan {
+		openPorts = append(openPorts, port)
+	}
+
+	return openPorts
+}
+
+// DiscoverHosts finds active hosts on the network
+func (ns *NetScanner) DiscoverHosts() []HostInfo {
+	var hosts []HostInfo
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	hostChan := make(chan HostInfo, 255)
+
+	ipRange := ns.generateIPRange()
+
+	for _, ip := range ipRange {
+		wg.Add(1)
+		go func(currentIP string) {
+			defer wg.Done()
+
+			// Only check if host is alive via ping
+			if !ns.isHostAvailable(currentIP) {
+				return
+			}
+
+			host := HostInfo{
+				IP:      currentIP,
+				IsAlive: true,
+			}
+
+			// Hostname resolution
+			names, err := net.LookupAddr(currentIP)
+			if err == nil && len(names) > 0 {
+				host.Hostname = names[0]
+			}
+
+			// Perform port scan only for alive hosts
+			host.OpenPorts = ns.comprehensivePortScan(currentIP)
+
+			// Send host info only if it's alive (ping successful)
+			hostChan <- host
+		}(ip)
+	}
+
+	go func() {
+		wg.Wait()
+		close(hostChan)
+	}()
+
+	for host := range hostChan {
+		mu.Lock()
+		hosts = append(hosts, host)
+		mu.Unlock()
+	}
+
+	return hosts
+}
+
+// generateIPRange creates a list of IP addresses to scan
+func (ns *NetScanner) generateIPRange() []string {
+	var ips []string
+	base := ns.BaseIP
+	for i := 1; i < 255; i++ {
+		ips = append(ips, fmt.Sprintf("%s.%d", base, i))
+	}
+	return ips
+}
+
+// SaveHostsToJSON writes discovered hosts to a JSON file
+func SaveHostsToJSON(hosts []HostInfo, filename string) error {
+	file, err := os.Create(filename)
+	if err != nil {
+		return fmt.Errorf("error creating file: %v", err)
+	}
+	defer file.Close()
+
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "  ")
+
+	return encoder.Encode(hosts)
 }
 
 func main() {
@@ -151,7 +213,7 @@ func main() {
 		log.Fatal("This program requires root/administrator privileges to run")
 	}
 
-	scanner := NewNetworkScanner("192.168.50", 24)
+	scanner := NewNetScanner("192.168.1", 24)
 
 	fmt.Println("Scanning network... This may take a few moments.")
 
