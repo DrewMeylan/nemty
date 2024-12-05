@@ -51,8 +51,6 @@ func NewNetScanner(cidr string) *NetScanner {
 	}
 }
 
-// Might need to move to a helpers folder? Or can struct instance call self.EnumerateHosts?
-// Inputs: CIDR Address Range || Outputs: An array of all IP addresses in the address space
 func (ns *NetScanner) EnumerateHosts(cidr string) ([]net.IP, error) {
 	ip, ipNet, err := net.ParseCIDR(cidr)
 
@@ -127,7 +125,6 @@ func (ns *NetScanner) PingSweep(cidr string) ([]HostInfo, error) {
 
 	return discoveredHosts, nil
 }
-
 func NextIP(ip *net.IP) {
 	for j := len(*ip) - 1; j >= 0; j-- {
 		(*ip)[j]++
@@ -135,62 +132,6 @@ func NextIP(ip *net.IP) {
 			break
 		}
 	}
-}
-
-// comprehensivePortScan checks a wider range of ports
-func (ns *NetScanner) TcpScan(cidr string) ([]int, error) {
-	ip, _, err := net.ParseCIDR(cidr) // Modify?
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
-	ports := []int{
-		// Common service ports
-		22,   // SSH
-		80,   // HTTP
-		443,  // HTTPS
-		21,   // FTP
-		25,   // SMTP
-		53,   // DNS
-		88,   // Kerberos
-		110,  // POP3
-		143,  // IMAP
-		389,  // LDAP
-		3306, // MySQL
-		3389, // RDP
-		5900, // VNC
-		8080, // HTTP Proxy
-		445,  // SMB
-	}
-
-	var openPorts []int
-	var wg sync.WaitGroup
-	portChan := make(chan int, len(ports))
-
-	for _, port := range ports {
-		wg.Add(1)
-		go func(p int) {
-			defer wg.Done()
-			address := fmt.Sprintf("%s:%d", ip, p)
-			conn, err := net.DialTimeout("tcp", address, ns.Timeout)
-			if err == nil {
-				portChan <- p
-				conn.Close()
-			}
-		}(port)
-	}
-
-	go func() {
-		wg.Wait()
-		close(portChan)
-	}()
-
-	for port := range portChan {
-		openPorts = append(openPorts, port)
-	}
-
-	return openPorts, err
 }
 
 // --------------------------------------- Helpers ----------------------------------------
