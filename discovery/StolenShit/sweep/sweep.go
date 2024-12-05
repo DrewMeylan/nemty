@@ -37,6 +37,7 @@ func PingSweep(subnetFlag string) {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+	//nHosts := len(ips)
 	nHosts := len(ips)
 	//fmt.Println("First IP addr: " + ips[0].String())
 	//fmt.Println("Last IP addr: " + ips[len(ips)-1].String())
@@ -46,7 +47,7 @@ func PingSweep(subnetFlag string) {
 
 	// spawn workers
 	if nHosts > pingWorkers {
-		for i := 0; i < pingWorkers; i++ {
+		for i := 0; i < pingWorkers; i++ { //pingWorkers sets an upper bound on the number of concurrent workers
 			go worker(hosts, res)
 		}
 	} else {
