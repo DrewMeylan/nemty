@@ -240,7 +240,12 @@ func (tc *TopologyCrawler) SaveTopology(filename string) error {
 }
 
 // parseCDPOutput converts raw CDP output to structured device info
+// Need to read from channel of responses? Channel of
 func parseCDPOutput(sourceIP, output string) (*Device, error) {
+	if error != nil {
+		return nil, err
+	}
+
 	// Mock implementation - replace with actual parsing logic
 	return &Device{
 		IP:       sourceIP,
@@ -270,12 +275,6 @@ func main() {
 	crawler := NewTopologyCrawler(5, credentials)
 	crawler.NetBoxClient = netBoxClient
 
-	err := crawler.Crawl("192.168.1.1")
-	if err != nil {
-		log.Fatalf("Crawl failed: %v", err)
-	}
-
-	err = crawler.SaveTopology("network_topology.json")
 	if err != nil {
 		log.Fatalf("Failed to save topology: %v", err)
 	}

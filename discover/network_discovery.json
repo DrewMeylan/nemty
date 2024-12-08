@@ -22,22 +22,11 @@
     ]
   },
   {
-    "ip": "192.168.50.190",
-    "hostname": "LGwebOSTV",
-    "is_alive": true
-  },
-  {
-    "ip": "192.168.50.169",
-    "hostname": "RokuBoku",
-    "is_alive": true
-  },
-  {
-    "ip": "192.168.50.133",
-    "hostname": "Kaleb-s-A14",
-    "is_alive": true
-  },
-  {
     "ip": "192.168.50.150",
+    "is_alive": true
+  },
+  {
+    "ip": "192.168.50.236",
     "is_alive": true
   }
 ]

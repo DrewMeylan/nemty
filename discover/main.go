@@ -144,7 +144,7 @@ func GetHostname(ip net.IP) string {
 }
 func PortScan(ip net.IP, timeout time.Duration) []int {
 	tcp_ports := []int{22, 80, 88, 389, 443, 21, 25, 53, 3306, 3389} // Add more ports as needed
-	udp_ports := []int{53, 67, 69, 88, 123, 161, 514}
+	//udp_ports := []int{53, 67, 69, 88, 123, 161, 514}
 	openPorts := []int{}
 
 	for _, port := range tcp_ports {
@@ -155,15 +155,14 @@ func PortScan(ip net.IP, timeout time.Duration) []int {
 			conn.Close()
 		}
 	}
-
-	for _, port := range udp_ports {
-		address := fmt.Sprintf("%s:%d", ip.String(), port)
-		conn, err := net.DialTimeout("udp", address, timeout)
-		if err == nil {
-			openPorts = append(openPorts, port)
-			conn.Close()
-		}
-	}
+	//	for _, port := range udp_ports {
+	//		address := fmt.Sprintf("%s:%d", ip.String(), port)
+	//		conn, err := net.DialTimeout("udp", address, timeout)
+	//		if err == nil {
+	//			openPorts = append(openPorts, port)
+	//			conn.Close()
+	//		}
+	//	}
 	return openPorts
 }
 
