@@ -59,7 +59,7 @@ func main() {
 	config := SSHConfig{
 		Username: "admin",
 		Password: "password",
-		Host:     "192.168.1.1",
+		Host:     "192.168.12.1",
 		Port:     22,
 		Command:  "show lldp neighbors", // Replace with the desired command
 	}
