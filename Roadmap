@@ -1,3 +1,4 @@
 ### Discovery
 1. Ping Sweep / Port Scan [ Working ]
 2. Topology mapping
+3. Modify portscanning functions to implement nmap in golang
