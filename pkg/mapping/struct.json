@@ -1,0 +1,18 @@
+[
+  {
+    "ip": "A.B.C.D",
+    "hostname": "EXAMPLE",
+    "neighbors": [
+      {
+        "ip": "E.F.G.H",
+        "hostname": "EXAMPLE2",
+        "local-if": "LOCAL INTERFACE",
+        "remote-if": "REMOTE INTERFACE",
+        "link-speed": "LINK SPEED",
+        "link-type": "ACCESS/TRUNK/ROUTED",
+        "vlan(s)": [80, 53, 99]
+      }
+    ]
+  },
+  {}
+]

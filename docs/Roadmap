@@ -1,0 +1,18 @@
+### Discovery
+1. Ping Sweep / Port Scan [ Working ]
+2. Topology mapping
+3. Modify portscanning functions to implement nmap in golang
+
+
+### Project Structure
+/project-root
+├── cmd/           # Main entry points (CLI commands)
+├── pkg/
+│   ├── api/       # NetBox API client
+│   ├── discovery/ # Network & service discovery modules
+│   ├── mapping/   # Topology mapping logic
+│   ├── models/    # Data structures for devices, services, etc.
+│   └── utils/     # Utility functions
+├── configs/       # Configuration files
+├── docs/          # Documentation
+└── main.go

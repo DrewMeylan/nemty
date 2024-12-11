@@ -1,0 +1,15 @@
+curl -X POST http://10.20.29.66:8000/api/dcim/sites/ \
+-H "Authorization: token 5baac5091a7086ce7dd17f49ce96c24ab6b0959a" \
+-H "Content-Type: application/json" \
+-d '{
+  "name": "Example Site",
+  "slug": "example-site",
+  "status": "active",
+  "region": null,
+  "tenant": null,
+  "facility": "Building 1",
+  "description": "An example site for testing.",
+  "physical_address": "1234 Example St, Example City, EC",
+  "latitude": 40.7128,
+  "longitude": -74.0060
+}'
