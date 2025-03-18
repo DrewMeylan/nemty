@@ -1,13 +1,5 @@
 [
   {
-    "ip": "192.168.50.82",
-    "hostname": "archcraft",
-    "is_alive": true,
-    "open_ports": [
-      22
-    ]
-  },
-  {
     "ip": "192.168.50.1",
     "hostname": "RT-AX58U-B070",
     "is_alive": true,
@@ -17,9 +9,12 @@
     ]
   },
   {
-    "ip": "192.168.50.34",
-    "hostname": "789d5763d8eadffabc5d548979be5a8c.local.",
-    "is_alive": true
+    "ip": "192.168.50.180",
+    "hostname": "megara",
+    "is_alive": true,
+    "open_ports": [
+      22
+    ]
   },
   {
     "ip": "192.168.50.133",
@@ -27,12 +22,15 @@
     "is_alive": true
   },
   {
-    "ip": "192.168.50.203",
-    "hostname": "Pixel-9-Pro-XL",
+    "ip": "192.168.50.99",
     "is_alive": true
   },
   {
     "ip": "192.168.50.150",
+    "is_alive": true
+  },
+  {
+    "ip": "192.168.50.62",
     "is_alive": true
   }
 ]
